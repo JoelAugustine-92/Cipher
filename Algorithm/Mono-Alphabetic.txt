@@ -1,0 +1,51 @@
+Algorithm for Monoalphabetic Substitution Cipher (Encryption)
+
+Step 1: Represent the alphabets as numerical values.
+
+A/a = 0
+B/b = 1
+C/c = 2
+...
+Z/z = 25
+
+Step 2: Ask the user to enter the plaintext.
+
+Step 3: Ask the user to enter a substitution key (a permutation of all 26 letters with no repetitions).
+
+Example Key:
+
+Plain Alphabet : ABCDEFGHIJKLMNOPQRSTUVWXYZ
+Cipher Alphabet: QWERTYUIOPASDFGHJKLZXCVBNM
+
+Step 4: Store the plaintext in P and the substitution key in K.
+
+Step 5: Read each character of the plaintext one by one.
+
+Step 6: Convert the current plaintext character into its corresponding numerical value (0–25).
+
+Step 7: Use the numerical value as the index to find the corresponding letter in the substitution key.
+
+C=K[P]
+
+where:
+
+P = Numerical value (index) of the plaintext character
+K = Substitution alphabet (key)
+C = Corresponding ciphertext character
+
+Step 8: Replace the plaintext character with the corresponding ciphertext character from the substitution key.
+
+Step 9: Repeat Steps 5–8 until all characters in the plaintext have been encrypted.
+
+Step 10: Display the generated ciphertext.
+
+Formula Used
+C=K[P]
+	​
+
+
+where:
+
+C = Ciphertext character
+P = Plaintext character index (0–25)
+K = Substitution alphabet (key)

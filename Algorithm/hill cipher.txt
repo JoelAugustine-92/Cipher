@@ -1,0 +1,47 @@
+Algorithm for Hill Cipher (Encryption)
+
+Step 1: Represent the alphabets as numerical values.
+
+A/a = 0
+B/b = 1
+C/c = 2
+...
+Z/z = 25
+
+Step 2: Ask the user to enter the plaintext.
+
+Step 3: Ask the user to enter the key matrix of order n×n (e.g., 2×2 or 3×3).
+
+Step 4: Convert each plaintext character into its corresponding numerical value (0–25).
+
+Step 5: Divide the plaintext into blocks of size n. If the last block has fewer than n characters, pad it with a letter such as X until the block is complete.
+
+Step 6: Form a column vector P for each plaintext block.
+
+Step 7: Encrypt each block using the Hill cipher formula:
+
+C=(K×P)mod26
+
+where:
+
+K = Key matrix
+P = Plaintext column vector
+C = Ciphertext column vector
+
+Step 8: Convert each value in the ciphertext vector (0–25) back into its corresponding alphabetic character.
+
+Step 9: Repeat Steps 6–8 for all plaintext blocks.
+
+Step 10: Concatenate all encrypted blocks and display the final ciphertext.
+
+Formula Used
+C=(K×P)mod26
+	​
+
+
+where:
+
+C = Ciphertext vector
+K = Key matrix
+P = Plaintext vector
+mod 26 ensures all values remain in the range 0–25.

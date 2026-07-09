@@ -1,0 +1,45 @@
+Step 1: Represent the alphabets as numerical values.
+
+A/a = 0
+B/b = 1
+C/c = 2
+...
+Z/z = 25
+
+Step 2: Ask the user to enter the plaintext.
+
+Step 3: Ask the user to enter the key (shift value).
+
+Step 4: Store the plaintext in P and the key in K.
+
+Step 5: Read each character of the plaintext one by one.
+
+Step 6: Convert the current plaintext character into its corresponding numerical value (P).
+
+Step 7: Encrypt the character using the formula:
+
+C=(P+K)mod26
+
+where:
+
+P = Numerical value of the plaintext character
+K = Key (shift value)
+C = Numerical value of the ciphertext character
+
+Step 8: Convert the resulting numerical value C back into its corresponding alphabetic character.
+
+Step 9: Repeat Steps 5–8 until all characters in the plaintext have been encrypted.
+
+Step 10: Display the generated ciphertext.
+
+Formula Used
+C=(P+K)mod26
+	​
+
+
+where:
+
+C = Ciphertext character value
+P = Plaintext character value
+K = Key (shift)
+mod 26 ensures the alphabet wraps around from Z back to A.
