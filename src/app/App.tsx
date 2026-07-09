@@ -112,7 +112,14 @@ function normalizeMod(value: number, modulus: number): number {
 }
 
 function parseHillMatrix(key: string): number[][] {
-  const values = key.split(/[\s,;]+/).map(v => Number(v.trim())).filter(v => Number.isFinite(v));
+  const trimmed = key.trim();
+  if (!trimmed) return [];
+
+  const hasSeparators = /[\s,;]+/.test(trimmed);
+  const values = hasSeparators
+    ? trimmed.split(/[\s,;]+/).map(v => Number(v.trim())).filter(v => Number.isFinite(v))
+    : trimmed.replace(/[^0-9]/g, "").split("").map(v => Number(v));
+
   const size = Math.sqrt(values.length);
   if (!Number.isInteger(size) || size < 2) return [];
   return Array.from({ length: size }, (_, row) =>
@@ -120,13 +127,19 @@ function parseHillMatrix(key: string): number[][] {
   );
 }
 
+function getMinor(matrix: number[][], rowToRemove: number, colToRemove: number): number[][] {
+  return matrix
+    .filter((_, row) => row !== rowToRemove)
+    .map(row => row.filter((_, col) => col !== colToRemove));
+}
+
 function determinant(matrix: number[][]): number {
+  if (matrix.length === 1) return matrix[0][0];
   if (matrix.length === 2) {
     return matrix[0][0] * matrix[1][1] - matrix[0][1] * matrix[1][0];
   }
   return matrix[0].reduce((sum, value, col) => {
-    const minor = matrix.slice(1).map(row => row.filter((_, idx) => idx !== col));
-    return sum + (col % 2 === 0 ? 1 : -1) * value * determinant(minor);
+    return sum + (col % 2 === 0 ? 1 : -1) * value * determinant(getMinor(matrix, 0, col));
   }, 0);
 }
 
@@ -139,15 +152,21 @@ function modInverse(value: number, modulus: number): number | null {
 }
 
 function inverseHillMatrix(matrix: number[][]): number[][] | null {
-  if (matrix.length !== 2) return null;
-  const det = determinant(matrix);
-  const detInv = modInverse(det, 26);
+  if (matrix.length < 2 || matrix.some(row => row.length !== matrix.length)) return null;
+
+  const detInv = modInverse(determinant(matrix), 26);
   if (detInv === null) return null;
-  const [[a, b], [c, d]] = matrix;
-  return [
-    [normalizeMod(d * detInv, 26), normalizeMod(-b * detInv, 26)],
-    [normalizeMod(-c * detInv, 26), normalizeMod(a * detInv, 26)],
-  ];
+
+  const cofactors = matrix.map((row, r) =>
+    row.map((_, c) => {
+      const sign = (r + c) % 2 === 0 ? 1 : -1;
+      return normalizeMod(sign * determinant(getMinor(matrix, r, c)), 26);
+    })
+  );
+
+  return cofactors[0].map((_, c) =>
+    cofactors.map(row => normalizeMod(row[c] * detInv, 26))
+  );
 }
 
 function multiplyMatrixVector(matrix: number[][], vector: number[]): number[] {
@@ -249,7 +268,7 @@ const CIPHER_CONFIG = [
   { id: "atbash" as CipherKey,    name: "Atbash",     icon: "🔄", hasKey: false, keyType: "text",   keyLabel: "",                       keyDefault: ""       },
   { id: "rot13" as CipherKey,     name: "ROT13",      icon: "↩️", hasKey: false, keyType: "text",   keyLabel: "",                       keyDefault: ""       },
   { id: "morse" as CipherKey,     name: "Morse",      icon: "📡", hasKey: false, keyType: "text",   keyLabel: "",                       keyDefault: ""       },
-  { id: "hill" as CipherKey,      name: "Hill",       icon: "#", hasKey: true,  keyType: "text",   keyLabel: "Key Matrix",             keyDefault: "3 3 2 5" },
+  { id: "hill" as CipherKey,      name: "Hill",       icon: "#", hasKey: true,  keyType: "text",   keyLabel: "Key Matrix",             keyDefault: "2336" },
   { id: "monoalphabetic" as CipherKey, name: "Monoalphabetic", icon: "A=Q", hasKey: true, keyType: "text", keyLabel: "Substitution Alphabet", keyDefault: "QWERTYUIOPASDFGHJKLZXCVBNM" },
 ];
 
@@ -514,8 +533,8 @@ export default function App() {
     }
     if (selectedCipher === "hill") {
       const matrix = parseHillMatrix(cipherKey);
-      if (matrix.length !== 2) return "Hill Cipher currently supports a 2x2 key matrix like: 3 3 2 5.";
-      if (!inverseHillMatrix(matrix)) return "Hill key matrix must be invertible modulo 26. Try: 3 3 2 5.";
+      if (matrix.length < 2) return "Enter a square Hill key matrix, like 2336, 3 3 2 5, or nine numbers for 3x3.";
+      if (!inverseHillMatrix(matrix)) return "Hill key matrix must be invertible modulo 26. Try 2336 or 3 3 2 5.";
     }
     if (selectedCipher === "monoalphabetic") {
       const cleaned = cipherKey.toUpperCase().replace(/[^A-Z]/g, "");
@@ -832,8 +851,8 @@ export default function App() {
                       value={cipherKey}
                       onChange={e => setCipherKey(e.target.value)}
                       placeholder={currentCipher.keyDefault}
-                      min={currentCipher.id === "caesar" ? 1 : 2}
-                      max={currentCipher.id === "caesar" ? 25 : 10}
+                      min={currentCipher.id === "caesar" ? 1 : currentCipher.id === "railfence" ? 2 : undefined}
+                      max={currentCipher.id === "caesar" ? 25 : currentCipher.id === "railfence" ? 10 : undefined}
                       className={`w-full rounded-2xl p-4 text-base outline-none border transition-all duration-200 focus:ring-2 ${inputCls}`}
                       aria-describedby="key-hint"
                     />
@@ -841,6 +860,8 @@ export default function App() {
                       {currentCipher.id === "caesar" && "Integer between 1 and 25."}
                       {currentCipher.id === "vigenere" && "Alphabetic keyword only (A–Z). Case insensitive."}
                       {currentCipher.id === "railfence" && "Integer between 2 and 10."}
+                      {currentCipher.id === "hill" && "Enter a square matrix as compact digits or separated numbers, for example: 2336, 3 3 2 5, or 6 24 1 13 16 10 20 17 15."}
+                      {currentCipher.id === "monoalphabetic" && "Enter all 26 letters exactly once, for example: QWERTYUIOPASDFGHJKLZXCVBNM."}
                     </div>
                   </div>
                 )}
