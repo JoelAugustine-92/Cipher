@@ -7,7 +7,7 @@ import {
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type CipherKey = "caesar" | "vigenere" | "railfence" | "atbash" | "rot13" | "morse" | "hill" | "monoalphabetic";
+type CipherKey = "caesar" | "vigenere" | "railfence" | "atbash" | "rot13" | "morse" | "hill" | "monoalphabetic" | "playfair";
 type Mode = "encrypt" | "decrypt";
 type Tab = "cipher" | "educational" | "history";
 type Theme = "dark" | "light";
@@ -193,6 +193,70 @@ function hillCipher(text: string, key: string, decrypt: boolean): string {
   return output;
 }
 
+
+function buildPlayfairSquare(key: string): string[][] {
+  const alphabet = "ABCDEFGHIKLMNOPQRSTUVWXYZ";
+  const cleanedKey = (key || "MONARCHY").toUpperCase().replace(/J/g, "I").replace(/[^A-Z]/g, "");
+  const unique = Array.from(new Set((cleanedKey + alphabet).split(""))).filter(char => alphabet.includes(char));
+  return Array.from({ length: 5 }, (_, row) => unique.slice(row * 5, row * 5 + 5));
+}
+
+function playfairPairs(text: string, decrypt: boolean): string[] {
+  const cleaned = text.toUpperCase().replace(/J/g, "I").replace(/[^A-Z]/g, "");
+  if (decrypt) {
+    const even = cleaned.length % 2 === 0 ? cleaned : `${cleaned}X`;
+    return even.match(/.{1,2}/g) ?? [];
+  }
+
+  const pairs: string[] = [];
+  let index = 0;
+  while (index < cleaned.length) {
+    const first = cleaned[index];
+    const second = cleaned[index + 1];
+    if (!second) {
+      pairs.push(`${first}X`);
+      index += 1;
+    } else if (first === second) {
+      pairs.push(`${first}X`);
+      index += 1;
+    } else {
+      pairs.push(`${first}${second}`);
+      index += 2;
+    }
+  }
+  return pairs;
+}
+
+function findPlayfairPosition(square: string[][], char: string): [number, number] {
+  for (let row = 0; row < square.length; row++) {
+    const col = square[row].indexOf(char);
+    if (col >= 0) return [row, col];
+  }
+  return [0, 0];
+}
+
+function playfairCipher(text: string, key: string, decrypt: boolean): string {
+  const square = buildPlayfairSquare(key);
+  const pairs = playfairPairs(text, decrypt);
+  const shift = decrypt ? -1 : 1;
+
+  return pairs.map(pair => {
+    const [a, b] = pair.split("");
+    const [rowA, colA] = findPlayfairPosition(square, a);
+    const [rowB, colB] = findPlayfairPosition(square, b);
+
+    if (rowA === rowB) {
+      return square[rowA][normalizeMod(colA + shift, 5)] + square[rowB][normalizeMod(colB + shift, 5)];
+    }
+
+    if (colA === colB) {
+      return square[normalizeMod(rowA + shift, 5)][colA] + square[normalizeMod(rowB + shift, 5)][colB];
+    }
+
+    return square[rowA][colB] + square[rowB][colA];
+  }).join("");
+}
+
 function normalizeMonoKey(key: string): string {
   const cleaned = key.toUpperCase().replace(/[^A-Z]/g, "");
   return new Set(cleaned).size === 26 && cleaned.length === 26 ? cleaned : "QWERTYUIOPASDFGHJKLZXCVBNM";
@@ -229,6 +293,18 @@ function buildSolutionSteps(cipher: CipherKey, text: string, key: string, decryp
     return steps;
   }
 
+
+  if (cipher === "playfair") {
+    const square = buildPlayfairSquare(key || "MONARCHY");
+    const pairs = playfairPairs(text, decrypt);
+    steps.push(`Built the 5x5 key matrix from keyword "${key || "MONARCHY"}", merging I and J.`);
+    steps.push(`Key matrix: ${square.map(row => `[${row.join(" ")}]`).join(" ")}.`);
+    steps.push(`${decrypt ? "Split ciphertext" : "Prepared plaintext"} into digraphs: ${pairs.join(" | ") || "none"}.`);
+    steps.push(decrypt ? "Used left/up shifts for same row or column, and the rectangle rule for different rows and columns." : "Used right/down shifts for same row or column, and the rectangle rule for different rows and columns.");
+    steps.push(`Final ${decrypt ? "plaintext" : "ciphertext"}: ${output}.`);
+    return steps;
+  }
+
   if (cipher === "monoalphabetic") {
     const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
     const monoKey = normalizeMonoKey(key);
@@ -255,6 +331,7 @@ function processCipher(cipher: CipherKey, text: string, key: string, decrypt: bo
     case "morse":     return morseCipher(text, decrypt);
     case "hill":      return hillCipher(text, key, decrypt);
     case "monoalphabetic": return monoalphabeticCipher(text, key, decrypt);
+    case "playfair":  return playfairCipher(text, key, decrypt);
     default:          return text;
   }
 }
@@ -270,6 +347,7 @@ const CIPHER_CONFIG = [
   { id: "morse" as CipherKey,     name: "Morse",      icon: "📡", hasKey: false, keyType: "text",   keyLabel: "",                       keyDefault: ""       },
   { id: "hill" as CipherKey,      name: "Hill",       icon: "#", hasKey: true,  keyType: "text",   keyLabel: "Key Matrix",             keyDefault: "2336" },
   { id: "monoalphabetic" as CipherKey, name: "Monoalphabetic", icon: "A=Q", hasKey: true, keyType: "text", keyLabel: "Substitution Alphabet", keyDefault: "QWERTYUIOPASDFGHJKLZXCVBNM" },
+  { id: "playfair" as CipherKey, name: "Playfair", icon: "5x5", hasKey: true, keyType: "text", keyLabel: "Keyword", keyDefault: "MONARCHY" },
 ];
 
 const EDU: Record<CipherKey, {
@@ -352,6 +430,17 @@ const EDU: Record<CipherKey, {
     advantages: ["Easy to implement and demonstrate", "Large theoretical key space", "Preserves spaces and punctuation cleanly"],
     disadvantages: ["Letter frequencies remain visible", "Broken by frequency analysis", "Requires a full valid alphabet key"],
     applications: ["Puzzle ciphers", "Introductory substitution lessons", "Historical cipher demonstrations"],
+    timeComplexity: "O(n)", spaceComplexity: "O(n)",
+  },
+  playfair: {
+    name: "Playfair Cipher", icon: "5x5",
+    definition: "A digraph substitution cipher that encrypts pairs of letters using a 5x5 key matrix. I and J share one cell.",
+    algorithm: "Build a 5x5 key square from the keyword, split prepared text into letter pairs, then apply same-row, same-column, or rectangle substitution rules.",
+    formula: "Digraph rules: same row -> shift horizontally; same column -> shift vertically; rectangle -> swap columns",
+    example: 'Key="MONARCHY": "HELLO" prepares as HE LX LO and encrypts pair by pair through the 5x5 square.',
+    advantages: ["Encrypts two letters at a time", "Hides single-letter frequency better than monoalphabetic substitution", "Good visual teaching cipher"],
+    disadvantages: ["Still vulnerable to digraph frequency analysis", "I/J are merged, so exact recovery can be ambiguous", "Filler X characters may need manual interpretation"],
+    applications: ["Historical field ciphers", "Classical cryptography exercises", "Teaching digraph substitution"],
     timeComplexity: "O(n)", spaceComplexity: "O(n)",
   },
   morse: {
@@ -535,6 +624,9 @@ export default function App() {
       const matrix = parseHillMatrix(cipherKey);
       if (matrix.length < 2) return "Enter a square Hill key matrix, like 2336, 3 3 2 5, or nine numbers for 3x3.";
       if (!inverseHillMatrix(matrix)) return "Hill key matrix must be invertible modulo 26. Try 2336 or 3 3 2 5.";
+    }
+    if (selectedCipher === "playfair" && !cipherKey.replace(/[^a-zA-Z]/g, "")) {
+      return "Playfair keyword must contain at least one letter.";
     }
     if (selectedCipher === "monoalphabetic") {
       const cleaned = cipherKey.toUpperCase().replace(/[^A-Z]/g, "");
@@ -862,6 +954,7 @@ export default function App() {
                       {currentCipher.id === "railfence" && "Integer between 2 and 10."}
                       {currentCipher.id === "hill" && "Enter a square matrix as compact digits or separated numbers, for example: 2336, 3 3 2 5, or 6 24 1 13 16 10 20 17 15."}
                       {currentCipher.id === "monoalphabetic" && "Enter all 26 letters exactly once, for example: QWERTYUIOPASDFGHJKLZXCVBNM."}
+                      {currentCipher.id === "playfair" && "Enter a keyword. Duplicate letters are removed and I/J share one cell, for example: MONARCHY."}
                     </div>
                   </div>
                 )}

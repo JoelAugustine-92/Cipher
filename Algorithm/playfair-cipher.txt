@@ -1,0 +1,74 @@
+Algorithm
+
+Step 1: Construct the Key Matrix
+
+Choose a keyword.
+Remove duplicate letters from the keyword.
+Write the unique letters row-wise into a 5 × 5 matrix.
+Fill the remaining cells with the unused letters of the alphabet.
+Combine I and J into a single cell.
+
+Step 2: Prepare the Plaintext
+
+Convert all letters to uppercase.
+Replace J with I.
+Remove spaces and punctuation.
+Split the plaintext into pairs (digraphs).
+If both letters in a pair are the same, insert X between them.
+If one letter remains at the end, append X to complete the final pair.
+
+Step 3: Encrypt Each Pair
+
+For every digraph:
+
+Case 1: Same Row
+Replace each letter with the letter immediately to its right.
+If a letter is at the end of the row, wrap around to the beginning.
+Case 2: Same Column
+Replace each letter with the letter immediately below it.
+If a letter is at the bottom, wrap around to the top.
+Case 3: Different Row and Column (Rectangle Rule)
+Form a rectangle using the two letters.
+Replace each letter with the letter in the same row but in the column of the other letter.
+
+Step 4: Combine the Encrypted Pairs
+Join all encrypted digraphs to obtain the final ciphertext.
+
+Decryption Algorithm
+Use the same 5 × 5 key matrix.
+Split the ciphertext into digraphs.
+For each pair:
+Same Row: Replace each letter with the letter to its left (wrap around if necessary).
+Same Column: Replace each letter with the letter above it (wrap around if necessary).
+Rectangle Rule: Replace each letter with the letter in the same row but in the column of the other letter.
+Remove any filler X inserted during encryption if it is not part of the original message.
+Flow of the Playfair Cipher
+Start
+   ↓
+Choose Keyword
+   ↓
+Construct 5×5 Key Matrix
+   ↓
+Prepare Plaintext
+   ↓
+Split into Digraphs
+   ↓
+For Each Pair
+   ↓
+ ┌────────────────────────────┐
+ │ Same Row?                  │──Yes→ Shift Right
+ └────────────────────────────┘
+            │No
+            ↓
+ ┌────────────────────────────┐
+ │ Same Column?               │──Yes→ Shift Down
+ └────────────────────────────┘
+            │No
+            ↓
+Apply Rectangle Rule
+            ↓
+Join Cipher Pairs
+            ↓
+Ciphertext
+            ↓
+End
